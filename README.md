@@ -68,6 +68,12 @@ kubectl port-forward svc/supabase-kong 8000:8000 -n <namespace>
 - Автоматическая настройка SSL с Let's Encrypt через Traefik
 - Поддержка DNS-вызова для выпуска сертификатов
 
+### Кастомные Email шаблоны
+- Добавлен nginx-сервер для хранения и обслуживания кастомных email шаблонов
+- Шаблоны хранятся в PersistentVolume с использованием StorageClass "seaweedfs-storage"
+- Легко интегрируется с Auth сервисом для использования кастомных шаблонов писем
+- Доступ к шаблонам через URL: http://supabase-nginx-templates.namespace.svc.cluster.local/
+
 ## Компоненты
 
 Развертывание Supabase включает следующие компоненты:
@@ -83,6 +89,7 @@ kubectl port-forward svc/supabase-kong 8000:8000 -n <namespace>
 - Vector
 - Kong API Gateway
 - Image Proxy
+- Nginx Templates (для кастомных email шаблонов)
 
 ## Устранение неполадок
 
@@ -109,3 +116,27 @@ kubectl get ingressroute -n <namespace>
 ```bash
 kubectl get svc -n <namespace>
 ```
+
+## Использование кастомных email шаблонов
+
+Для использования кастомных email шаблонов:
+
+1. Загрузите шаблоны в PersistentVolume:
+   ```bash
+   kubectl cp your-templates/ <namespace>/supabase-nginx-templates-xxx:/usr/share/nginx/html/
+   ```
+
+2. Настройте Auth сервис для использования этих шаблонов, добавив в `setup.sh`:
+   ```bash
+   HELM_PARAMS="$HELM_PARAMS --set auth.environment.GOTRUE_MAILER_TEMPLATES_INVITE=http://supabase-nginx-templates/invite.html"
+   HELM_PARAMS="$HELM_PARAMS --set auth.environment.GOTRUE_MAILER_TEMPLATES_CONFIRMATION=http://supabase-nginx-templates/confirmation.html"
+   HELM_PARAMS="$HELM_PARAMS --set auth.environment.GOTRUE_MAILER_TEMPLATES_RECOVERY=http://supabase-nginx-templates/recovery.html"
+   HELM_PARAMS="$HELM_PARAMS --set auth.environment.GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE=http://supabase-nginx-templates/email_change.html"
+   HELM_PARAMS="$HELM_PARAMS --set auth.environment.GOTRUE_MAILER_TEMPLATES_MAGIC_LINK=http://supabase-nginx-templates/magic_link.html"
+   ```
+
+3. Проверьте доступность шаблонов:
+   ```bash
+   kubectl port-forward svc/supabase-nginx-templates 8080:80 -n <namespace>
+   curl http://localhost:8080/invite.html
+   ```

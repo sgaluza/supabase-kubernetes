@@ -1,0 +1,18 @@
+{{- if .Values.nginxTemplates.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "supabase.fullname" . }}-nginx-templates
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "supabase.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/name: supabase-nginx-templates
+{{- end }}

@@ -1,0 +1,68 @@
+{{- if .Values.nginxTemplates.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supabase.fullname" . }}-nginx-templates
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "supabase.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/name: supabase-nginx-templates
+  template:
+    metadata:
+      labels:
+        {{- include "supabase.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/name: supabase-nginx-templates
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ .Values.nginxTemplates.serviceAccount.name | default "default" }}
+      initContainers:
+        - name: init-nginx-templates
+          image: "busybox:latest"
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p /templates
+              echo "<html><body><h1>Email Templates</h1><p>This directory will contain email templates.</p></body></html>" > /templates/index.html
+              chmod -R 755 /templates
+          volumeMounts:
+            - name: templates-volume
+              mountPath: /templates
+      containers:
+        - name: nginx-templates
+          image: "nginx:alpine"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          volumeMounts:
+            - name: templates-volume
+              mountPath: /usr/share/nginx/html
+              readOnly: true
+          env:
+            - name: NGINX_ENTRYPOINT_QUIET_LOGS
+              value: "1"
+      volumes:
+        - name: templates-volume
+          {{- if .Values.nginxTemplates.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "supabase.fullname" . }}-nginx-templates-pvc
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- end }}

@@ -1,0 +1,15 @@
+{{- if and .Values.nginxTemplates.enabled .Values.nginxTemplates.persistence.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "supabase.fullname" . }}-nginx-templates-pvc
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.nginxTemplates.persistence.accessMode }}
+  storageClassName: {{ .Values.nginxTemplates.persistence.storageClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.nginxTemplates.persistence.size }}
+{{- end }}
