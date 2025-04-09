@@ -1,31 +1,111 @@
 # Supabase Kubernetes
 
-This repository contains the charts to deploy a [Supabase](https://github.com/supabase/supabase) instance inside a Kubernetes cluster using Helm 3.
+Этот репозиторий содержит Helm-чарты и скрипты для развертывания Supabase в Kubernetes.
 
-For any information regarding Supabase itself you can refer to the [official documentation](https://supabase.io/docs).
+## Предварительные требования
 
-## What's Supabase ?
+- Кластер Kubernetes
+- kubectl, настроенный для доступа к вашему кластеру
+- Установленный Helm 3
+- OpenSSL для генерации JWT-токенов
+- Traefik Ingress Controller с настроенным Let's Encrypt для SSL-сертификатов
 
-Supabase is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
+## Быстрый старт
 
-## How to use ?
+Для развертывания Supabase в вашем кластере Kubernetes просто выполните:
 
-You can find the documentation inside the [chart directory](./charts/supabase/README.md)
+```bash
+./setup.sh --namespace <namespace> --domain <domain> --db-user <username>
+```
 
-# Roadmap
+Например:
 
-- [ ] Multi-node Support
+```bash
+./setup.sh --namespace demo1 --domain demo1.domain.com
+```
 
-## Support
+Скрипт выполнит следующие действия:
+1. Создаст или очистит указанное пространство имен
+2. Сгенерирует необходимые секреты и JWT-токены
+3. Установит Helm-чарт Supabase с соответствующими параметрами
+4. Создаст IngressRoute для Traefik с поддержкой SSL через Let's Encrypt
+5. Выведет все учетные данные и API-ключи
 
-This project is supported by the community and not officially supported by Supabase. Please do not create any issues on the official Supabase repositories if you face any problems using this project, but rather open an issue on this repository.
+## Доступ к Supabase
 
-## Contributing
+После установки вы можете получить доступ к Supabase Studio через:
 
-You can contribute to this project by forking this repository and opening a pull request.
+1. Домен, указанный при установке (например, https://demo1.domain.com)
 
-When you're ready to publish your chart on the `main` branch, you'll have to execute `sh build.sh` to package the charts and generate the Helm manifest.
+2. Или через port-forwarding:
 
-## License
+```bash
+kubectl port-forward svc/supabase-kong 8000:8000 -n <namespace>
+```
 
-[Apache 2.0 License.](./LICENSE)
+Затем посетите: http://localhost:8000
+
+## Конфигурация
+
+Скрипт установки генерирует случайные пароли, секреты и JWT-токены для безопасности. Если вам нужно настроить развертывание, вы можете изменить скрипт `setup.sh`, чтобы добавить или изменить параметры Helm, передаваемые с флагами `--set`.
+
+## Мультитенантность и адаптация
+
+Чарт был модифицирован для поддержки мультитенантности и адаптирован под современные Kubernetes-решения:
+
+### Мультитенантность
+- Vector использует Role и RoleBinding вместо ClusterRole и ClusterRoleBinding
+- Каждый экземпляр Supabase устанавливается в отдельное пространство имен
+- Для каждого экземпляра создается отдельный IngressRoute с уникальным доменом
+
+### Хранилище
+- По умолчанию используется Local Path Provisioner для хранения данных
+- Все постоянные тома (PersistentVolumes) используют StorageClass "local-path"
+- Можно настроить другой StorageClass при необходимости
+
+### Ingress
+- Вместо стандартного Kubernetes Ingress используется Traefik IngressRoute
+- Автоматическая настройка SSL с Let's Encrypt через Traefik
+- Поддержка DNS-вызова для выпуска сертификатов
+
+## Компоненты
+
+Развертывание Supabase включает следующие компоненты:
+
+- PostgreSQL Database
+- Supabase Studio (Admin UI)
+- Auth Service (GoTrue)
+- REST API (PostgREST)
+- Realtime Service
+- Storage API
+- Functions
+- Analytics
+- Vector
+- Kong API Gateway
+- Image Proxy
+
+## Устранение неполадок
+
+Если у вас возникли проблемы с развертыванием, проверьте статус подов:
+
+```bash
+kubectl get pods -n <namespace>
+```
+
+И проверьте логи конкретных подов:
+
+```bash
+kubectl logs -n <namespace> <pod-name>
+```
+
+Для проверки IngressRoute:
+
+```bash
+kubectl get ingressroute -n <namespace>
+```
+
+Для проверки сервисов:
+
+```bash
+kubectl get svc -n <namespace>
+```
