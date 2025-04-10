@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "supabase.realtime.fullname" . }}
+  name: {{ include "supabase.service.fullname" (list . "realtime") }}
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
 spec:
@@ -11,7 +11,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "supabase.realtime.selectorLabels" . | nindent 6 }}
+      {{- include "supabase.service.selectorLabels" (list . "realtime") | nindent 6 }}
   template:
     metadata:
       {{- with .Values.realtime.podAnnotations }}
@@ -19,13 +19,13 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "supabase.realtime.selectorLabels" . | nindent 8 }}
+        {{- include "supabase.service.selectorLabels" (list . "realtime") | nindent 8 }}
     spec:
       {{- with .Values.realtime.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "supabase.realtime.serviceAccountName" . }}
+      serviceAccountName: {{ include "supabase.service.serviceAccountName" (list . "realtime") }}
       securityContext:
         {{- toYaml .Values.realtime.podSecurityContext | nindent 8 }}
       initContainers:
@@ -35,7 +35,7 @@ spec:
           env:
             - name: DB_HOST
               {{- if .Values.db.enabled }}
-              value: {{ include "supabase.db.fullname" . | quote }}
+              value: {{ include "supabase.service.fullname" (list . "db") | quote }}
               {{- else }}
               value: {{ .Values.auth.environment.DB_HOST | quote }}
               {{- end }}
@@ -60,7 +60,7 @@ spec:
               done
             - echo "Database is ready"
       containers:
-        - name: {{ include "supabase.realtime.name" $ }}
+        - name: {{ include "supabase.service.name" (list . "realtime") }}
           securityContext:
             {{- toYaml .Values.realtime.securityContext | nindent 12 }}
           image: "{{ .Values.realtime.image.repository }}:{{ .Values.realtime.image.tag | default .Chart.AppVersion }}"
@@ -74,7 +74,7 @@ spec:
             {{- end }}
             {{- if .Values.db.enabled }}
             - name: DB_HOST
-              value: {{ include "supabase.db.fullname" . }}
+              value: {{ include "supabase.service.fullname" (list . "db") }}
             {{- end }}
             - name: DB_PASSWORD
               valueFrom:

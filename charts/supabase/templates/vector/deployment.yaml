@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "supabase.vector.fullname" . }}
+  name: {{ include "supabase.service.fullname" (list . "vector") }}
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
     vector.dev/exclude: "true"
@@ -12,7 +12,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "supabase.vector.selectorLabels" . | nindent 6 }}
+      {{- include "supabase.service.selectorLabels" (list . "vector") | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -21,20 +21,20 @@ spec:
       {{- end }}
         checksum/config: {{ include (print $.Template.BasePath "/vector/config.yaml") . | sha256sum }}
       labels:
-        {{- include "supabase.vector.selectorLabels" . | nindent 8 }}
+        {{- include "supabase.service.selectorLabels" (list . "vector") | nindent 8 }}
     spec:
       {{- with .Values.vector.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "supabase.vector.serviceAccountName" . }}
+      serviceAccountName: {{ include "supabase.service.serviceAccountName" (list . "vector") }}
       securityContext:
         {{- toYaml .Values.vector.podSecurityContext | nindent 8 }}
       containers:
         - args:
             - --config
             - /etc/vector/vector.yml
-          name: {{ include "supabase.vector.name" $ }}
+          name: {{ include "supabase.service.name" (list . "vector") }}
           securityContext:
             {{- toYaml .Values.vector.securityContext | nindent 12 }}
           image: "{{ .Values.vector.image.repository }}:{{ .Values.vector.image.tag | default .Chart.AppVersion }}"
@@ -91,7 +91,7 @@ spec:
         {{- end }}
         - name: vector-config
           configMap:
-            name:  {{ include "supabase.vector.fullname" . }}-config
+            name:  {{ include "supabase.service.fullname" (list . "vector") }}-config
             defaultMode: 0777
       {{- with .Values.vector.nodeSelector }}
       nodeSelector:

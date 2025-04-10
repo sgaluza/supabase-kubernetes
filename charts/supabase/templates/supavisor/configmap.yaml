@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "supabase.fullname" . }}-supavisor-config
+  name: {{ include "supabase.service.fullname" (list . "supavisor") }}-config
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
 data:
@@ -17,7 +17,7 @@ data:
 
     params = %{
       "external_id" => "{{ .Values.supavisor.tenantId }}",
-      "db_host" => "{{ include "supabase.fullname" . }}-supabase-db",
+      "db_host" => "{{ include "supabase.service.fullname" (list . "db") }}",
       "db_port" => {{ .Values.db.service.port }},
       "db_database" => "{{ .Values.secret.db.database }}",
       "require_user" => false,

@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "supabase.analytics.fullname" . }}
+  name: {{ include "supabase.service.fullname" (list . "analytics") }}
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
 spec:
@@ -11,7 +11,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "supabase.analytics.selectorLabels" . | nindent 6 }}
+      {{- include "supabase.service.selectorLabels" (list . "analytics") | nindent 6 }}
   template:
     metadata:
       {{- with .Values.analytics.podAnnotations }}
@@ -19,13 +19,13 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "supabase.analytics.selectorLabels" . | nindent 8 }}
+        {{- include "supabase.service.selectorLabels" (list . "analytics") | nindent 8 }}
     spec:
       {{- with .Values.analytics.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "supabase.analytics.serviceAccountName" . }}
+      serviceAccountName: {{ include "supabase.service.serviceAccountName" (list . "analytics") }}
       securityContext:
         {{- toYaml .Values.analytics.podSecurityContext | nindent 8 }}
       initContainers:
@@ -35,7 +35,7 @@ spec:
           env:
             - name: DB_HOST
               {{- if .Values.db.enabled }}
-              value: {{ include "supabase.db.fullname" . | quote }}
+              value: {{ include "supabase.service.fullname" (list . "db") | quote }}
               {{- else }}
               value: {{ .Values.analytics.environment.DB_HOST | quote }}
               {{- end }}
@@ -60,7 +60,7 @@ spec:
               done
             - echo "Database is ready"
       containers:
-        - name: {{ include "supabase.analytics.name" $ }}
+        - name: {{ include "supabase.service.name" (list $ "analytics") }}
           securityContext:
             {{- toYaml .Values.analytics.securityContext | nindent 12 }}
           image: "{{ .Values.analytics.image.repository }}:{{ .Values.analytics.image.tag | default .Chart.AppVersion }}"
@@ -72,7 +72,7 @@ spec:
             {{- end }}
             {{- if .Values.db.enabled }}
             - name: DB_HOSTNAME
-              value: {{ include "supabase.db.fullname" . }}
+              value: {{ include "supabase.service.fullname" (list . "db") }}
             {{- end }}
             - name: DB_PASSWORD
               valueFrom:
@@ -153,7 +153,7 @@ spec:
         {{- if .Values.analytics.bigQuery.enabled }}
         - name: gcloud-credentials
           secret:
-            secretName: {{ include "supabase.analytics.fullname" . }}-gcloud
+            secretName: {{ include "supabase.service.fullname" (list . "analytics") }}-gcloud
         {{- end }}
       {{- end }}
       {{- with .Values.analytics.nodeSelector }}

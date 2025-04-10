@@ -20,7 +20,7 @@ spec:
             - -c
             - |
               curl -sfo /dev/null \
-                http://{{ include "supabase.imgproxy.fullname" . }}:{{ .Values.imgproxy.service.port }}/health
-              echo "Sevice {{ include "supabase.imgproxy.fullname" . }} is healthy."
+                http://{{ include "supabase.service.fullname" (list . "imgproxy") }}:{{ .Values.imgproxy.service.port }}/health
+              echo "Sevice {{ include "supabase.service.fullname" (list . "imgproxy") }} is healthy."
       restartPolicy: Never
 {{- end }}

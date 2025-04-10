@@ -1,6 +1,6 @@
 {{- if .Values.kong.enabled -}}
 {{- if .Values.kong.ingress.enabled -}}
-{{- $fullName := include "supabase.kong.fullname" . -}}
+{{- $fullName := include "supabase.service.fullname" (list . "kong") -}}
 {{- $svcPort := .Values.kong.service.port -}}
 {{- if and .Values.kong.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
   {{- if not (hasKey .Values.kong.ingress.annotations "kubernetes.io/ingress.class") }}

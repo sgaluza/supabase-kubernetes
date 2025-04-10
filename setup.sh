@@ -101,21 +101,21 @@ echo "Using domain: $DOMAIN"
 echo "Using database user: $DB_USER"
 
 # Check if namespace exists, if not create it
-if ! kubectl get namespace $NAMESPACE &> /dev/null; then
+if ! kubectl --kubeconfig ~/.kube/atrvd-config get namespace $NAMESPACE &> /dev/null; then
   echo "Creating namespace $NAMESPACE..."
-  kubectl create namespace $NAMESPACE
+  kubectl --kubeconfig ~/.kube/atrvd-config create namespace $NAMESPACE
 else
   echo "Namespace $NAMESPACE already exists, cleaning up..."
   # Delete any existing resources in the namespace
-  kubectl delete --all deployments,services,pods,pvc,configmaps,secrets,statefulsets -n $NAMESPACE --ignore-not-found
+  kubectl --kubeconfig ~/.kube/atrvd-config delete --all deployments,services,pods,pvc,configmaps,secrets,statefulsets -n $NAMESPACE --ignore-not-found
   
   # Find and delete any PVs that might be related to this namespace
   echo "Looking for orphaned PVs..."
-  PVS=$(kubectl get pv -o json | jq -r '.items[] | select(.spec.claimRef.namespace == "'$NAMESPACE'") | .metadata.name')
+  PVS=$(kubectl --kubeconfig ~/.kube/atrvd-config get pv -o json | jq -r '.items[] | select(.spec.claimRef.namespace == "'$NAMESPACE'") | .metadata.name')
   if [ -n "$PVS" ]; then
     echo "Found orphaned PVs, deleting..."
     for PV in $PVS; do
-      kubectl delete pv $PV --force
+      kubectl --kubeconfig ~/.kube/atrvd-config delete pv $PV --force
     done
   fi
 fi
@@ -214,23 +214,22 @@ for service in analytics meta realtime storage auth rest; do
     HELM_PARAMS="$HELM_PARAMS --set $service.environment.DB_USER=$DB_USER"
   fi
 done
-
 # Install Supabase using Helm with parameters
 echo "Installing Supabase using Helm..."
-helm upgrade --install supabase charts/supabase -n $NAMESPACE $HELM_PARAMS
+helm upgrade --install supabase charts/supabase -n $NAMESPACE $HELM_PARAMS --kubeconfig ~/.kube/atrvd-config
 
 echo "Waiting for pods to start..."
 sleep 10
 
 # Check pod status
-kubectl get pods -n $NAMESPACE
+kubectl --kubeconfig ~/.kube/atrvd-config get pods -n $NAMESPACE
 
 echo -e "${GREEN}Supabase installation complete!${NC}"
 echo "You can check the status of the pods with:"
 echo "kubectl get pods -n $NAMESPACE"
 echo ""
 echo "Creating IngressRoute for Traefik..."
-kubectl apply -f - <<EOF
+kubectl --kubeconfig ~/.kube/atrvd-config apply -f - <<EOF
 apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
@@ -250,7 +249,7 @@ spec:
 EOF
 echo ""
 echo "You can also access the Supabase Studio via port forwarding:"
-echo "kubectl port-forward svc/supabase-kong 8000:8000 -n $NAMESPACE"
+echo "kubectl --kubeconfig ~/.kube/atrvd-config port-forward svc/supabase-kong 8000:8000 -n $NAMESPACE"
 echo ""
 echo "Then visit: http://localhost:8000"
 echo ""

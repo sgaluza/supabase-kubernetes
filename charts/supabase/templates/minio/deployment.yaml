@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "supabase.minio.fullname" . }}
+  name: {{ include "supabase.service.fullname" (list . "minio") }}
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
 spec:
@@ -11,7 +11,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "supabase.minio.selectorLabels" . | nindent 6 }}
+      {{- include "supabase.service.selectorLabels" (list . "minio") | nindent 6 }}
   template:
     metadata:
       {{- with .Values.minio.podAnnotations }}
@@ -19,18 +19,18 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "supabase.minio.selectorLabels" . | nindent 8 }}
+        {{- include "supabase.service.selectorLabels" (list . "minio") | nindent 8 }}
     spec:
       restartPolicy: Always
       {{- with .Values.minio.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "supabase.minio.serviceAccountName" . }}
+      serviceAccountName: {{ include "supabase.service.serviceAccountName" (list . "minio") }}
       securityContext:
         {{- toYaml .Values.minio.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ include "supabase.minio.name" $ }}
+        - name: {{ include "supabase.service.name" (list . "minio") }}
           securityContext:
             {{- toYaml .Values.minio.securityContext | nindent 12 }}
           image: "{{ .Values.minio.image.repository }}:{{ .Values.minio.image.tag | default .Chart.AppVersion }}"
@@ -89,7 +89,7 @@ spec:
         - name: minio-data
           {{- if .Values.minio.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "supabase.minio.fullname" . }}-pvc
+            claimName: {{ include "supabase.service.fullname" (list . "minio") }}-pvc
           {{- else }}
           emptyDir:
             medium: ""

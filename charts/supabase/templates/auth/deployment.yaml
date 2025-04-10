@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "supabase.auth.fullname" . }}
+  name: {{ include "supabase.service.fullname" (list . "auth") }}
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
 spec:
@@ -11,7 +11,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "supabase.auth.selectorLabels" . | nindent 6 }}
+      {{- include "supabase.service.selectorLabels" (list . "auth") | nindent 6 }}
   template:
     metadata:
       {{- with .Values.auth.podAnnotations }}
@@ -19,13 +19,13 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "supabase.auth.selectorLabels" . | nindent 8 }}
+        {{- include "supabase.service.selectorLabels" (list . "auth") | nindent 8 }}
     spec:
       {{- with .Values.auth.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "supabase.auth.serviceAccountName" . }}
+      serviceAccountName: {{ include "supabase.service.serviceAccountName" (list . "auth") }}
       securityContext:
         {{- toYaml .Values.auth.podSecurityContext | nindent 8 }}
       initContainers:
@@ -35,7 +35,7 @@ spec:
           env:
             - name: DB_HOST
               {{- if .Values.db.enabled }}
-              value: {{ include "supabase.db.fullname" . | quote }}
+              value: {{ include "supabase.service.fullname" (list . "db") | quote }}
               {{- else }}
               value: {{ .Values.auth.environment.DB_HOST | quote }}
               {{- end }}
@@ -60,7 +60,7 @@ spec:
               done
             - echo "Database is ready"
       containers:
-        - name: {{ include "supabase.auth.name" $ }}
+        - name: {{ include "supabase.service.name" (list . "auth") }}
           securityContext:
             {{- toYaml .Values.auth.securityContext | nindent 12 }}
           image: "{{ .Values.auth.image.repository }}:{{ .Values.auth.image.tag | default .Chart.AppVersion }}"
@@ -72,7 +72,7 @@ spec:
             {{- end }}
             {{- if .Values.db.enabled }}
             - name: DB_HOST
-              value: {{ include "supabase.db.fullname" . }}
+              value: {{ include "supabase.service.fullname" (list . "db") }}
             {{- end }}
             - name: DB_PASSWORD
               valueFrom:

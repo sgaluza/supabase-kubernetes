@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "supabase.fullname" . }}-supavisor
+  name: {{ include "supabase.service.fullname" (list . "supavisor") }}
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
 spec:
@@ -21,6 +21,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "supabase.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/name: supabase-supavisor
+    {{- include "supabase.service.selectorLabels" (list . "supavisor") | nindent 4 }}
 {{- end }}

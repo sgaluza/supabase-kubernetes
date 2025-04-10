@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "supabase.functions.fullname" . }}
+  name: {{ include "supabase.service.fullname" (list . "functions") }}
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
 spec:
@@ -11,7 +11,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "supabase.functions.selectorLabels" . | nindent 6 }}
+      {{- include "supabase.service.selectorLabels" (list . "functions") | nindent 6 }}
   template:
     metadata:
       {{- with .Values.functions.podAnnotations }}
@@ -19,13 +19,13 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "supabase.functions.selectorLabels" . | nindent 8 }}
+        {{- include "supabase.service.selectorLabels" (list . "functions") | nindent 8 }}
     spec:
       {{- with .Values.functions.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "supabase.functions.serviceAccountName" . }}
+      serviceAccountName: {{ include "supabase.service.serviceAccountName" (list . "functions") }}
       securityContext:
         {{- toYaml .Values.functions.podSecurityContext | nindent 8 }}
       containers:
@@ -33,7 +33,7 @@ spec:
             - start
             - --main-service
             - /home/deno/functions/main
-          name: {{ include "supabase.functions.name" $ }}
+          name: {{ include "supabase.service.name" (list . "functions") }}
           securityContext:
             {{- toYaml .Values.functions.securityContext | nindent 12 }}
           image: "{{ .Values.functions.image.repository }}:{{ .Values.functions.image.tag | default .Chart.AppVersion }}"
@@ -45,7 +45,7 @@ spec:
             {{- end }}
             - name: DB_HOSTNAME
               {{- if .Values.db.enabled }}
-              value: {{ include "supabase.db.fullname" . }}
+              value: {{ include "supabase.service.fullname" (list . "db") }}
               {{- else }}
               value: $(DB_HOST)
               {{- end }}
@@ -135,7 +135,7 @@ spec:
         {{- end }}
         - name: functions-main
           configMap:
-            name: {{ include "supabase.functions.fullname" . }}-main
+            name: {{ include "supabase.service.fullname" (list . "functions") }}-main
       {{- with .Values.functions.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

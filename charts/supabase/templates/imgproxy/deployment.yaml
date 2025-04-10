@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "supabase.imgproxy.fullname" . }}
+  name: {{ include "supabase.service.fullname" (list . "imgproxy") }}
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
 spec:
@@ -11,7 +11,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "supabase.imgproxy.selectorLabels" . | nindent 6 }}
+      {{- include "supabase.service.selectorLabels" (list . "imgproxy") | nindent 6 }}
   template:
     metadata:
       {{- with .Values.imgproxy.podAnnotations }}
@@ -19,17 +19,17 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "supabase.imgproxy.selectorLabels" . | nindent 8 }}
+        {{- include "supabase.service.selectorLabels" (list . "imgproxy") | nindent 8 }}
     spec:
       {{- with .Values.imgproxy.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "supabase.imgproxy.serviceAccountName" . }}
+      serviceAccountName: {{ include "supabase.service.serviceAccountName" (list . "imgproxy") }}
       securityContext:
         {{- toYaml .Values.imgproxy.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ include "supabase.imgproxy.name" $ }}
+        - name: {{ include "supabase.service.name" (list . "imgproxy") }}
           securityContext:
             {{- toYaml .Values.imgproxy.securityContext | nindent 12 }}
           image: "{{ .Values.imgproxy.image.repository }}:{{ .Values.imgproxy.image.tag | default .Chart.AppVersion }}"
@@ -73,7 +73,7 @@ spec:
         {{- if .Values.imgproxy.persistence.enabled }}
         - name: imgproxy-volume
           persistentVolumeClaim:
-            claimName: {{ include "supabase.imgproxy.fullname" . }}-pvc
+            claimName: {{ include "supabase.service.fullname" (list . "imgproxy") }}-pvc
         {{- end }}
       {{- end }}
       {{- with .Values.imgproxy.nodeSelector }}

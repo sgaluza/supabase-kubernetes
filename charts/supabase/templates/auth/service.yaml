@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "supabase.auth.fullname" . }}
+  name: {{ include "supabase.service.fullname" (list . "auth") }}
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
 spec:
@@ -13,5 +13,5 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "supabase.auth.selectorLabels" . | nindent 4 }}
+    {{- include "supabase.service.selectorLabels" (list . "auth") | nindent 4 }}
 {{- end }}

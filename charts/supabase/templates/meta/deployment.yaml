@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "supabase.meta.fullname" . }}
+  name: {{ include "supabase.service.fullname" (list . "meta") }}
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
 spec:
@@ -11,7 +11,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "supabase.meta.selectorLabels" . | nindent 6 }}
+      {{- include "supabase.service.selectorLabels" (list . "meta") | nindent 6 }}
   template:
     metadata:
       {{- with .Values.meta.podAnnotations }}
@@ -19,17 +19,17 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "supabase.meta.selectorLabels" . | nindent 8 }}
+        {{- include "supabase.service.selectorLabels" (list . "meta") | nindent 8 }}
     spec:
       {{- with .Values.meta.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "supabase.meta.serviceAccountName" . }}
+      serviceAccountName: {{ include "supabase.service.serviceAccountName" (list . "meta") }}
       securityContext:
         {{- toYaml .Values.meta.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ include "supabase.meta.name" $ }}
+        - name: {{ include "supabase.service.name" (list . "meta") }}
           securityContext:
             {{- toYaml .Values.meta.securityContext | nindent 12 }}
           image: "{{ .Values.meta.image.repository }}:{{ .Values.meta.image.tag | default .Chart.AppVersion }}"
@@ -41,7 +41,7 @@ spec:
             {{- end }}
             {{- if .Values.db.enabled }}
             - name: DB_HOST
-              value: {{ include "supabase.db.fullname" . }}
+              value: {{ include "supabase.service.fullname" (list . "db") }}
             {{- end }}
             - name: DB_PASSWORD
               valueFrom:

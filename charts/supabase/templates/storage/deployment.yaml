@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "supabase.storage.fullname" . }}
+  name: {{ include "supabase.service.fullname" (list . "storage") }}
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
 spec:
@@ -11,7 +11,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "supabase.storage.selectorLabels" . | nindent 6 }}
+      {{- include "supabase.service.selectorLabels" (list . "storage") | nindent 6 }}
   template:
     metadata:
       {{- with .Values.storage.podAnnotations }}
@@ -19,14 +19,14 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "supabase.storage.selectorLabels" . | nindent 8 }}
+        {{- include "supabase.service.selectorLabels" (list . "storage") | nindent 8 }}
     spec:
       restartPolicy: Always
       {{- with .Values.storage.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "supabase.storage.serviceAccountName" . }}
+      serviceAccountName: {{ include "supabase.service.serviceAccountName" (list . "storage") }}
       securityContext:
         {{- toYaml .Values.storage.podSecurityContext | nindent 8 }}
       initContainers:
@@ -36,7 +36,7 @@ spec:
           env:
             - name: DB_HOST
               {{- if .Values.db.enabled }}
-              value: {{ include "supabase.db.fullname" . | quote }}
+              value: {{ include "supabase.service.fullname" (list . "db") | quote }}
               {{- else }}
               value: {{ .Values.auth.environment.DB_HOST | quote }}
               {{- end }}
@@ -79,14 +79,14 @@ spec:
             - /bin/sh
             - -c
             - |
-              until /usr/bin/mc alias set supa-minio http://{{ include "supabase.minio.fullname" . }}:{{ .Values.minio.service.port }} $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD; do
+              until /usr/bin/mc alias set supa-minio http://{{ include "supabase.service.fullname" (list . "minio") }}:{{ .Values.minio.service.port }} $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD; do
                 echo "Waiting for minio to start..."
                 sleep 2
               done
               /usr/bin/mc mb --ignore-existing supa-minio/stub
         {{- end }}
       containers:
-        - name: {{ include "supabase.storage.name" $ }}
+        - name: {{ include "supabase.service.name" (list . "storage") }}
           securityContext:
             {{- toYaml .Values.storage.securityContext | nindent 12 }}
           image: "{{ .Values.storage.image.repository }}:{{ .Values.storage.image.tag | default .Chart.AppVersion }}"
@@ -98,11 +98,11 @@ spec:
             {{- end }}
             {{- if .Values.db.enabled }}
             - name: DB_HOST
-              value: {{ include "supabase.db.fullname" . }}
+              value: {{ include "supabase.service.fullname" (list . "db") }}
             {{- end }}
             {{- if .Values.rest.enabled }}
             - name: POSTGREST_URL
-              value: http://{{ include "supabase.rest.fullname" . }}:{{ .Values.rest.service.port }}
+              value: http://{{ include "supabase.service.fullname" (list . "rest") }}:{{ .Values.rest.service.port }}
             {{- end }}
             - name: DB_PASSWORD
               valueFrom:
@@ -168,7 +168,7 @@ spec:
                   {{- end }}
             {{- if .Values.imgproxy.enabled }}
             - name: IMGPROXY_URL
-              value: http://{{ include "supabase.imgproxy.fullname" . }}:{{ .Values.imgproxy.service.port | int }}
+              value: http://{{ include "supabase.service.fullname" (list . "imgproxy") }}:{{ .Values.imgproxy.service.port | int }}
             {{- end }}
             {{- if eq (include "supabase.secret.s3.isValid" .) "true" }}
             - name: AWS_ACCESS_KEY_ID
@@ -194,7 +194,7 @@ spec:
             {{- end }}
             {{- if .Values.minio.enabled }}
             - name: GLOBAL_S3_ENDPOINT
-              value: http://{{ include "supabase.minio.fullname" . }}:{{ default 9000 .Values.minio.service.port }}
+              value: http://{{ include "supabase.service.fullname" (list . "minio") }}:{{ default 9000 .Values.minio.service.port }}
             {{- end }}
           {{- with .Values.storage.livenessProbe }}
           livenessProbe:
@@ -234,7 +234,7 @@ spec:
         - name: storage-data
           {{- if .Values.storage.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "supabase.storage.fullname" . }}-pvc
+            claimName: {{ include "supabase.service.fullname" (list . "storage") }}-pvc
           {{- else }}
           emptyDir:
             medium: ""

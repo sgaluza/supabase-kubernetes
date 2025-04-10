@@ -2,26 +2,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "supabase.fullname" . }}-supavisor
+  name: {{ include "supabase.service.fullname" (list . "supavisor") }}
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.supavisor.replicaCount }}
   selector:
     matchLabels:
-      {{- include "supabase.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/name: supabase-supavisor
+      {{- include "supabase.service.selectorLabels" (list . "supavisor") | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "supabase.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/name: supabase-supavisor
+        {{- include "supabase.service.selectorLabels" (list . "supavisor") | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "supabase.supavisor.serviceAccountName" . }}
+      serviceAccountName: {{ include "supabase.service.serviceAccountName" (list . "supavisor") }}
       securityContext:
         {{- toYaml .Values.supavisor.podSecurityContext | nindent 8 }}
       initContainers:
@@ -32,33 +30,33 @@ spec:
         - -c
         - |
           apk add --no-cache postgresql-client
-          until pg_isready -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }}; do
+          until pg_isready -h {{ include "supabase.service.fullname" (list . "db") }} -p {{ .Values.db.service.port }}; do
             echo "Waiting for database to become ready..."
             sleep 2
           done
           echo "Database is ready, checking for _supabase database..."
-          until PGPASSWORD="{{ .Values.secret.db.password }}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U {{ .Values.secret.db.username }} -d postgres -c "\l" | grep _supabase; do
+          until PGPASSWORD="{{ .Values.secret.db.password }}" psql -h {{ include "supabase.service.fullname" (list . "db") }} -p {{ .Values.db.service.port }} -U {{ .Values.secret.db.username }} -d postgres -c "\l" | grep _supabase; do
             echo "Waiting for _supabase database to be created..."
             sleep 2
           done
           echo "Database _supabase exists, checking for _supavisor schema..."
-          until PGPASSWORD="{{ .Values.secret.db.password }}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U {{ .Values.secret.db.username }} -d _supabase -c "\dn" | grep _supavisor; do
+          until PGPASSWORD="{{ .Values.secret.db.password }}" psql -h {{ include "supabase.service.fullname" (list . "db") }} -p {{ .Values.db.service.port }} -U {{ .Values.secret.db.username }} -d _supabase -c "\dn" | grep _supavisor; do
             echo "Waiting for _supavisor schema to be created..."
             sleep 2
           done
           echo "Schema _supavisor exists, checking for pgbouncer schema..."
-          until PGPASSWORD="{{ .Values.secret.db.password }}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U {{ .Values.secret.db.username }} -d postgres -c "\dn" | grep pgbouncer; do
+          until PGPASSWORD="{{ .Values.secret.db.password }}" psql -h {{ include "supabase.service.fullname" (list . "db") }} -p {{ .Values.db.service.port }} -U {{ .Values.secret.db.username }} -d postgres -c "\dn" | grep pgbouncer; do
             echo "Waiting for pgbouncer schema to be created..."
             sleep 2
           done
           echo "Schema pgbouncer exists, checking for pgbouncer.get_auth function..."
-          until PGPASSWORD="{{ .Values.secret.db.password }}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U {{ .Values.secret.db.username }} -d postgres -c "\df pgbouncer.get_auth" | grep get_auth; do
+          until PGPASSWORD="{{ .Values.secret.db.password }}" psql -h {{ include "supabase.service.fullname" (list . "db") }} -p {{ .Values.db.service.port }} -U {{ .Values.secret.db.username }} -d postgres -c "\df pgbouncer.get_auth" | grep get_auth; do
             echo "Waiting for pgbouncer.get_auth function to be created..."
             sleep 2
           done
           echo "Function pgbouncer.get_auth exists, Supavisor can now start."
       containers:
-        - name: {{ .Chart.Name }}-supavisor
+        - name: {{ include "supabase.service.name" (list . "supavisor") }}
           securityContext:
             {{- toYaml .Values.supavisor.securityContext | nindent 12 }}
           image: "{{ .Values.supavisor.image.repository }}:{{ .Values.supavisor.image.tag | default .Chart.AppVersion }}"
@@ -95,7 +93,7 @@ spec:
             - name: POSTGRES_PORT
               value: "{{ .Values.db.service.port }}"
             - name: POSTGRES_HOST
-              value: "{{ include "supabase.fullname" . }}-supabase-db"
+              value: "{{ include "supabase.service.fullname" (list . "db") }}"
             - name: POSTGRES_DB
               value: "{{ .Values.secret.db.database }}"
             - name: POSTGRES_USER
@@ -103,7 +101,7 @@ spec:
             - name: POSTGRES_PASSWORD
               value: "{{ .Values.secret.db.password }}"
             - name: DATABASE_URL
-              value: "ecto://{{ .Values.secret.db.username }}:{{ .Values.secret.db.password }}@{{ include "supabase.fullname" . }}-supabase-db:{{ .Values.db.service.port }}/postgres"
+              value: "ecto://{{ .Values.secret.db.username }}:{{ .Values.secret.db.password }}@{{ include "supabase.service.fullname" (list . "db") }}:{{ .Values.db.service.port }}/postgres"
             - name: CLUSTER_POSTGRES
               value: "false"
             - name: SECRET_KEY_BASE
@@ -137,18 +135,18 @@ spec:
             - -c
             - |
               # Wait for _supabase database and _supavisor schema to be created
-              until PGPASSWORD="${POSTGRES_PASSWORD}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U "${POSTGRES_USER}" -d postgres -c "SELECT 1 FROM pg_database WHERE datname = '_supabase'" | grep 1; do
+              until PGPASSWORD="${POSTGRES_PASSWORD}" psql -h {{ include "supabase.service.fullname" (list . "db") }} -p {{ .Values.db.service.port }} -U "${POSTGRES_USER}" -d postgres -c "SELECT 1 FROM pg_database WHERE datname = '_supabase'" | grep 1; do
                 echo "Waiting for _supabase database to be created..."
                 sleep 2
               done
               
-              until PGPASSWORD="${POSTGRES_PASSWORD}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U "${POSTGRES_USER}" -d _supabase -c "SELECT 1 FROM pg_namespace WHERE nspname = '_supavisor'" | grep 1; do
+              until PGPASSWORD="${POSTGRES_PASSWORD}" psql -h {{ include "supabase.service.fullname" (list . "db") }} -p {{ .Values.db.service.port }} -U "${POSTGRES_USER}" -d _supabase -c "SELECT 1 FROM pg_namespace WHERE nspname = '_supavisor'" | grep 1; do
                 echo "Waiting for _supavisor schema to be created..."
                 sleep 2
               done
               
               # Create pgbouncer schema and auth function if they don't exist
-              PGPASSWORD="${POSTGRES_PASSWORD}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U "${POSTGRES_USER}" -d {{ .Values.secret.db.database }} -c "
+              PGPASSWORD="${POSTGRES_PASSWORD}" psql -h {{ include "supabase.service.fullname" (list . "db") }} -p {{ .Values.db.service.port }} -U "${POSTGRES_USER}" -d {{ .Values.secret.db.database }} -c "
               CREATE SCHEMA IF NOT EXISTS pgbouncer;
               CREATE OR REPLACE FUNCTION pgbouncer.get_auth(username TEXT)
               RETURNS TABLE(username TEXT, password TEXT) AS
@@ -168,7 +166,7 @@ spec:
       volumes:
         - name: config-volume
           configMap:
-            name: {{ include "supabase.fullname" . }}-supavisor-config
+            name: {{ include "supabase.service.fullname" (list . "supavisor") }}-config
       {{- with .Values.supavisor.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

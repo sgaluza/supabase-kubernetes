@@ -19,7 +19,7 @@ spec:
             - -c
             - |
               curl -sfo /dev/null \
-                http://{{ include "supabase.minio.fullname" . }}:{{ .Values.minio.service.port }}/minio/health/live
-              echo "Sevice {{ include "supabase.minio.fullname" . }} is healthy."
+                http://{{ include "supabase.service.fullname" (list . "minio") }}:{{ .Values.minio.service.port }}/minio/health/live
+              echo "Sevice {{ include "supabase.service.fullname" (list . "minio") }} is healthy."
       restartPolicy: Never
 {{- end }}

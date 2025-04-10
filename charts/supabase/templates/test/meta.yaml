@@ -20,7 +20,7 @@ spec:
             - -c
             - |
               curl -sfo /dev/null \
-                http://{{ include "supabase.meta.fullname" . }}:{{ .Values.meta.service.port }}/health
-              echo "Sevice {{ include "supabase.meta.fullname" . }} is healthy."
+                http://{{ include "supabase.service.fullname" (list . "meta") }}:{{ .Values.meta.service.port }}/health
+              echo "Sevice {{ include "supabase.service.fullname" (list . "meta") }} is healthy."
       restartPolicy: Never
 {{- end }}
