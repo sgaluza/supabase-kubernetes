@@ -90,6 +90,7 @@ kubectl port-forward svc/supabase-kong 8000:8000 -n <namespace>
 - Kong API Gateway
 - Image Proxy
 - Nginx Templates (для кастомных email шаблонов)
+- Supavisor (пул соединений для PostgreSQL)
 
 ## Устранение неполадок
 
@@ -140,3 +141,28 @@ kubectl get svc -n <namespace>
    kubectl port-forward svc/supabase-nginx-templates 8080:80 -n <namespace>
    curl http://localhost:8080/invite.html
    ```
+
+## Доступ к базе данных PostgreSQL
+
+Для прямого доступа к базе данных PostgreSQL вы можете использовать Supavisor (пул соединений):
+
+1. Доступ через стандартный порт PostgreSQL (5432):
+   ```bash
+   kubectl port-forward svc/supabase-supavisor 5432:5432 -n <namespace>
+   ```
+
+2. Доступ через порт пула соединений в транзакционном режиме (6543):
+   ```bash
+   kubectl port-forward svc/supabase-supavisor 6543:6543 -n <namespace>
+   ```
+
+3. Подключение к базе данных с помощью клиента PostgreSQL:
+   ```bash
+   # Через стандартный порт
+   psql -h localhost -p 5432 -U supabase_admin -d postgres
+   
+   # Через порт пула соединений
+   psql -h localhost -p 6543 -U supabase_admin -d postgres
+   ```
+
+Supavisor обеспечивает эффективное управление соединениями к базе данных, что особенно полезно при большом количестве одновременных подключений.

@@ -1,0 +1,15 @@
+{{- if .Values.supavisor.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+spec:
+  type: ExternalName
+  externalName: {{ include "supabase.fullname" . }}-supabase-db.{{ .Release.Namespace }}.svc.cluster.local
+  ports:
+  - port: {{ .Values.db.service.port }}
+    targetPort: {{ .Values.db.service.port }}
+{{- end }} 

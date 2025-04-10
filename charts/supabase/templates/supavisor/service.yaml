@@ -1,0 +1,26 @@
+{{- if .Values.supavisor.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "supabase.fullname" . }}-supavisor
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.supavisor.service.type }}
+  ports:
+    - port: 5432
+      targetPort: postgres
+      protocol: TCP
+      name: postgres
+    - port: 6543
+      targetPort: pooler
+      protocol: TCP
+      name: pooler
+    - port: 4000
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "supabase.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/name: supabase-supavisor
+{{- end }}

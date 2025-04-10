@@ -1,0 +1,184 @@
+{{- if .Values.supavisor.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supabase.fullname" . }}-supavisor
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.supavisor.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "supabase.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/name: supabase-supavisor
+  template:
+    metadata:
+      labels:
+        {{- include "supabase.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/name: supabase-supavisor
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "supabase.supavisor.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.supavisor.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: wait-for-db
+        image: alpine:3.18
+        command:
+        - sh
+        - -c
+        - |
+          apk add --no-cache postgresql-client
+          until pg_isready -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }}; do
+            echo "Waiting for database to become ready..."
+            sleep 2
+          done
+          echo "Database is ready, checking for _supabase database..."
+          until PGPASSWORD="{{ .Values.secret.db.password }}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U {{ .Values.secret.db.username }} -d postgres -c "\l" | grep _supabase; do
+            echo "Waiting for _supabase database to be created..."
+            sleep 2
+          done
+          echo "Database _supabase exists, checking for _supavisor schema..."
+          until PGPASSWORD="{{ .Values.secret.db.password }}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U {{ .Values.secret.db.username }} -d _supabase -c "\dn" | grep _supavisor; do
+            echo "Waiting for _supavisor schema to be created..."
+            sleep 2
+          done
+          echo "Schema _supavisor exists, checking for pgbouncer schema..."
+          until PGPASSWORD="{{ .Values.secret.db.password }}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U {{ .Values.secret.db.username }} -d postgres -c "\dn" | grep pgbouncer; do
+            echo "Waiting for pgbouncer schema to be created..."
+            sleep 2
+          done
+          echo "Schema pgbouncer exists, checking for pgbouncer.get_auth function..."
+          until PGPASSWORD="{{ .Values.secret.db.password }}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U {{ .Values.secret.db.username }} -d postgres -c "\df pgbouncer.get_auth" | grep get_auth; do
+            echo "Waiting for pgbouncer.get_auth function to be created..."
+            sleep 2
+          done
+          echo "Function pgbouncer.get_auth exists, Supavisor can now start."
+      containers:
+        - name: {{ .Chart.Name }}-supavisor
+          securityContext:
+            {{- toYaml .Values.supavisor.securityContext | nindent 12 }}
+          image: "{{ .Values.supavisor.image.repository }}:{{ .Values.supavisor.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.supavisor.image.pullPolicy }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+            - name: pooler
+              containerPort: 6543
+              protocol: TCP
+            - name: http
+              containerPort: 4000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          env:
+            - name: PORT
+              value: "4000"
+            - name: POSTGRES_PORT
+              value: "{{ .Values.db.service.port }}"
+            - name: POSTGRES_HOST
+              value: "{{ include "supabase.fullname" . }}-supabase-db"
+            - name: POSTGRES_DB
+              value: "{{ .Values.secret.db.database }}"
+            - name: POSTGRES_USER
+              value: "{{ .Values.secret.db.username }}"
+            - name: POSTGRES_PASSWORD
+              value: "{{ .Values.secret.db.password }}"
+            - name: DATABASE_URL
+              value: "ecto://{{ .Values.secret.db.username }}:{{ .Values.secret.db.password }}@{{ include "supabase.fullname" . }}-supabase-db:{{ .Values.db.service.port }}/postgres"
+            - name: CLUSTER_POSTGRES
+              value: "false"
+            - name: SECRET_KEY_BASE
+              value: "{{ .Values.supavisor.secretKeyBase }}"
+            - name: VAULT_ENC_KEY
+              value: "{{ .Values.supavisor.vaultEncKey }}"
+            - name: API_JWT_SECRET
+              value: "{{ .Values.secret.jwt.secret }}"
+            - name: METRICS_JWT_SECRET
+              value: "{{ .Values.secret.jwt.secret }}"
+            - name: REGION
+              value: "local"
+            - name: ERL_AFLAGS
+              value: "-proto_dist inet_tcp"
+            - name: POOLER_TENANT_ID
+              value: "{{ .Values.supavisor.tenantId }}"
+            - name: POOLER_DEFAULT_POOL_SIZE
+              value: "{{ .Values.supavisor.defaultPoolSize }}"
+            - name: POOLER_MAX_CLIENT_CONN
+              value: "{{ .Values.supavisor.maxClientConn }}"
+            - name: POOLER_POOL_MODE
+              value: "transaction"
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/pooler
+              readOnly: true
+          resources:
+            {{- toYaml .Values.supavisor.resources | nindent 12 }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              # Wait for _supabase database and _supavisor schema to be created
+              until PGPASSWORD="${POSTGRES_PASSWORD}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U "${POSTGRES_USER}" -d postgres -c "SELECT 1 FROM pg_database WHERE datname = '_supabase'" | grep 1; do
+                echo "Waiting for _supabase database to be created..."
+                sleep 2
+              done
+              
+              until PGPASSWORD="${POSTGRES_PASSWORD}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U "${POSTGRES_USER}" -d _supabase -c "SELECT 1 FROM pg_namespace WHERE nspname = '_supavisor'" | grep 1; do
+                echo "Waiting for _supavisor schema to be created..."
+                sleep 2
+              done
+              
+              # Create pgbouncer schema and auth function if they don't exist
+              PGPASSWORD="${POSTGRES_PASSWORD}" psql -h {{ include "supabase.fullname" . }}-supabase-db -p {{ .Values.db.service.port }} -U "${POSTGRES_USER}" -d {{ .Values.secret.db.database }} -c "
+              CREATE SCHEMA IF NOT EXISTS pgbouncer;
+              CREATE OR REPLACE FUNCTION pgbouncer.get_auth(username TEXT)
+              RETURNS TABLE(username TEXT, password TEXT) AS
+              \$\$
+                SELECT username, '${POSTGRES_PASSWORD}' AS password;
+              \$\$ LANGUAGE sql SECURITY DEFINER;
+              "
+              
+              # Run migrations to create tables in _supavisor schema
+              /app/bin/migrate
+              
+              # Execute script to create tenant and users
+              /app/bin/supavisor eval "$(cat /etc/pooler/pooler.exs)"
+              
+              # Start Supavisor server
+              /app/bin/server
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "supabase.fullname" . }}-supavisor-config
+      {{- with .Values.supavisor.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.supavisor.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.supavisor.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

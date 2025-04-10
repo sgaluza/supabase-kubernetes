@@ -107,7 +107,17 @@ if ! kubectl get namespace $NAMESPACE &> /dev/null; then
 else
   echo "Namespace $NAMESPACE already exists, cleaning up..."
   # Delete any existing resources in the namespace
-  kubectl delete --all deployments,services,pods,pvc,configmaps,secrets -n $NAMESPACE --ignore-not-found
+  kubectl delete --all deployments,services,pods,pvc,configmaps,secrets,statefulsets -n $NAMESPACE --ignore-not-found
+  
+  # Find and delete any PVs that might be related to this namespace
+  echo "Looking for orphaned PVs..."
+  PVS=$(kubectl get pv -o json | jq -r '.items[] | select(.spec.claimRef.namespace == "'$NAMESPACE'") | .metadata.name')
+  if [ -n "$PVS" ]; then
+    echo "Found orphaned PVs, deleting..."
+    for PV in $PVS; do
+      kubectl delete pv $PV --force
+    done
+  fi
 fi
 
 # Generate secrets
@@ -117,6 +127,7 @@ POSTGRES_PASSWORD=$(generate_alphanumeric 32)
 LOGFLARE_API_KEY=$(generate_alphanumeric 32)
 SMTP_PASSWORD=$(generate_alphanumeric 32)
 SECRET_KEY_BASE=$(generate_alphanumeric 32)
+VAULT_ENC_KEY=$(generate_alphanumeric 32)
 DASHBOARD_USERNAME="admin"
 DASHBOARD_PASSWORD=$(generate_alphanumeric 16)
 
@@ -166,6 +177,12 @@ HELM_PARAMS="$HELM_PARAMS --set secret.dashboard.password=$DASHBOARD_PASSWORD"
 HELM_PARAMS="$HELM_PARAMS --set db.persistence.storageClassName=$STORAGE_CLASS"
 HELM_PARAMS="$HELM_PARAMS --set storage.persistence.storageClassName=$STORAGE_CLASS"
 HELM_PARAMS="$HELM_PARAMS --set imgproxy.persistence.storageClassName=$STORAGE_CLASS"
+
+# Supavisor configuration
+HELM_PARAMS="$HELM_PARAMS --set supavisor.image.tag=1.1.56"
+HELM_PARAMS="$HELM_PARAMS --set supavisor.secretKeyBase=$SECRET_KEY_BASE"
+HELM_PARAMS="$HELM_PARAMS --set supavisor.vaultEncKey=$VAULT_ENC_KEY"
+HELM_PARAMS="$HELM_PARAMS --set supavisor.tenantId=default"
 
 # Studio configuration
 HELM_PARAMS="$HELM_PARAMS --set studio.environment.SUPABASE_PUBLIC_URL=https://$DOMAIN"

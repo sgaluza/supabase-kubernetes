@@ -91,7 +91,7 @@ db:
   image:
     repository: supabase/postgres
     pullPolicy: IfNotPresent
-    tag: "latest"
+    tag: "15.8.1.020"
   imagePullSecrets: []
   replicaCount: 1
   nameOverride: ""
@@ -107,15 +107,6 @@ db:
     # If not set and create is true, a name is generated using the fullname template
     name: ""
   podAnnotations: {}
-  podSecurityContext: {}
-    # fsGroup: 2000
-  securityContext: {}
-    # capabilities:
-    #   drop:
-    #   - ALL
-    # readOnlyRootFilesystem: true
-    # runAsNonRoot: true
-    # runAsUser: 1000
   service:
     type: ClusterIP
     port: 5432
@@ -152,7 +143,7 @@ db:
     #   memory: 128Mi
   persistence:
     enabled: true
-    storageClassName: ""
+    storageClassName: "local-path"
     annotations: {}
     size: 8Gi
     accessModes:
@@ -657,7 +648,7 @@ storage:
     #   cpu: 100m
     #   memory: 128Mi
   persistence:
-    enabled: true
+    enabled: false
     storageClassName: ""
     annotations: {}
     size: 10Gi
@@ -1162,3 +1153,44 @@ nginxTemplates:
     storageClassName: "seaweedfs-storage"
     size: 100Mi
     accessMode: ReadWriteOnce
+
+# Supavisor (Connection Pooler)
+supavisor:
+  enabled: true
+  image:
+    repository: supabase/supavisor
+    pullPolicy: IfNotPresent
+    tag: "1.1.56"
+  imagePullSecrets: []
+  replicaCount: 1
+  nameOverride: ""
+  fullnameOverride: ""
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: ""
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+  service:
+    type: ClusterIP
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # Supavisor specific settings
+  tenantId: "default"
+  defaultPoolSize: 20
+  maxClientConn: 100
+  poolMode: "transaction"
+  secretKeyBase: "supabase_secret_key_base"
+  vaultEncKey: "supabase_vault_enc_key"
+  # Connection string format for clients
+  # This is the format that clients will use to connect to the pooler
+  # The format is: postgres.<tenantId>:<password>@<host>:<port>/<database>
+  connectionFormat: "postgres.%s:%s@%s:%d/%s"
+
