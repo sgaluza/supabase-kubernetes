@@ -95,15 +95,7 @@ spec:
                   key: password_encoded
                   {{- end }}
             - name: DB_DATABASE
-              valueFrom:
-                secretKeyRef:
-                  {{- if .Values.secret.db.secretRef }}
-                  name: {{ .Values.secret.db.secretRef }}
-                  key: {{ .Values.secret.db.secretRefKey.database | default "database" }}
-                  {{- else }}
-                  name: {{ include "supabase.secret.db" . }}
-                  key: database
-                  {{- end }}
+              value: _supabase
             - name: LOGFLARE_API_KEY
               valueFrom:
                 secretKeyRef:

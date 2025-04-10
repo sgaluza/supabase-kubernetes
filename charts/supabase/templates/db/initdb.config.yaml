@@ -9,32 +9,28 @@ data:
   97-_supabase.sql: |
     \set pguser `echo "$POSTGRES_USER"`
 
-    -- Create _supabase database if not exists
-    DO $$
-    BEGIN
-      IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '_supabase') THEN
-        CREATE DATABASE _supabase WITH OWNER :pguser;
-      END IF;
-    END
-    $$;
+    CREATE DATABASE _supabase WITH OWNER :pguser;
+
   99-jwt.sql: |
     \set jwt_secret `echo "$JWT_SECRET"`
     \set jwt_exp `echo "$JWT_EXP"`
 
-    ALTER DATABASE postgres SET "app.settings.jwt_secret" TO :jwt_secret;
-    ALTER DATABASE postgres SET "app.settings.jwt_exp" TO :jwt_exp;
+    ALTER DATABASE postgres SET "app.settings.jwt_secret" TO :'jwt_secret';
+    ALTER DATABASE postgres SET "app.settings.jwt_exp" TO :'jwt_exp';
   99-logs.sql: |
     \set pguser `echo "$POSTGRES_USER"`
 
+    \c _supabase
     create schema if not exists _analytics;
     alter schema _analytics owner to :pguser;
+    \c postgres
+    
   99-realtime.sql: |
     \set pguser `echo "$POSTGRES_USER"`
 
     create schema if not exists _realtime;
     alter schema _realtime owner to :pguser;
   99-roles.sql: |
-    -- NOTE: change to your own passwords for production environments
     \set pgpass `echo "$POSTGRES_PASSWORD"`
 
     ALTER USER authenticator WITH PASSWORD :'pgpass';
@@ -42,6 +38,7 @@ data:
     ALTER USER supabase_auth_admin WITH PASSWORD :'pgpass';
     ALTER USER supabase_functions_admin WITH PASSWORD :'pgpass';
     ALTER USER supabase_storage_admin WITH PASSWORD :'pgpass';
+
   98-webhooks.sql: |
     BEGIN;
       -- Create pg_net extension
@@ -254,45 +251,11 @@ data:
   {{- if .Values.supavisor.enabled }}
   99-pooler.sql: |
     \set pguser `echo "$POSTGRES_USER"`
-    \set pgpass `echo "$POSTGRES_PASSWORD"`
 
-    -- Create _supabase database if not exists
-    DO $$
-    BEGIN
-      IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '_supabase') THEN
-        CREATE DATABASE _supabase WITH OWNER :pguser;
-      END IF;
-    END
-    $$;
-
-    -- Connect to _supabase database to create schema
     \c _supabase
-
-    -- Create _supavisor schema
-    CREATE SCHEMA IF NOT EXISTS _supavisor;
-    ALTER SCHEMA _supavisor OWNER TO :"pguser";
-
-    -- Return to main database
+    create schema if not exists _supavisor;
+    alter schema _supavisor owner to :pguser;
     \c postgres
 
-    -- Create pgbouncer schema and authentication function
-    CREATE SCHEMA IF NOT EXISTS pgbouncer;
-    
-    CREATE OR REPLACE FUNCTION pgbouncer.get_auth(p_usename TEXT)
-    RETURNS TABLE(username TEXT, password TEXT) AS
-    $$
-      SELECT p_usename, :'pgpass' AS password;
-    $$ LANGUAGE sql SECURITY DEFINER;
-
-    -- Ensure pgbouncer user exists
-    DO $$
-    BEGIN
-      IF NOT EXISTS (
-        SELECT FROM pg_catalog.pg_roles WHERE rolname = 'pgbouncer'
-      ) THEN
-        CREATE ROLE pgbouncer WITH LOGIN PASSWORD :'pgpass';
-      END IF;
-    END
-    $$;
   {{- end }}
 {{- end }}
