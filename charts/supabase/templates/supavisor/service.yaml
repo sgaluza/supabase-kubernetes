@@ -16,6 +16,9 @@ spec:
       targetPort: pooler
       protocol: TCP
       name: pooler
+      {{- if and (eq .Values.supavisor.service.type "NodePort") .Values.supavisor.service.nodePort }}
+      nodePort: {{ .Values.supavisor.service.nodePort }}
+      {{- end }}
     - port: 4000
       targetPort: http
       protocol: TCP

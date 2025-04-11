@@ -95,13 +95,13 @@ spec:
             - name: POSTGRES_HOST
               value: "{{ include "supabase.service.fullname" (list . "db") }}"
             - name: POSTGRES_DB
-              value: "{{ .Values.secret.db.database }}"
+              value: "{{ .Values.supavisor.environment.POSTGRES_DB | default .Values.secret.db.database }}"
             - name: POSTGRES_USER
               value: "{{ .Values.secret.db.username }}"
             - name: POSTGRES_PASSWORD
               value: "{{ .Values.secret.db.password }}"
             - name: DATABASE_URL
-              value: "ecto://{{ .Values.secret.db.username }}:{{ .Values.secret.db.password }}@{{ include "supabase.service.fullname" (list . "db") }}:{{ .Values.db.service.port }}/postgres"
+              value: "{{ .Values.supavisor.environment.DATABASE_URL | default (printf "ecto://%s:%s@%s:%s/postgres" .Values.secret.db.username .Values.secret.db.password (include "supabase.service.fullname" (list . "db")) .Values.db.service.port) }}"
             - name: CLUSTER_POSTGRES
               value: "false"
             - name: SECRET_KEY_BASE
@@ -146,7 +146,7 @@ spec:
               done
               
               # Create pgbouncer schema and auth function if they don't exist
-              PGPASSWORD="${POSTGRES_PASSWORD}" psql -h {{ include "supabase.service.fullname" (list . "db") }} -p {{ .Values.db.service.port }} -U "${POSTGRES_USER}" -d {{ .Values.secret.db.database }} -c "
+              PGPASSWORD="${POSTGRES_PASSWORD}" psql -h {{ include "supabase.service.fullname" (list . "db") }} -p {{ .Values.db.service.port }} -U "${POSTGRES_USER}" -d postgres -c "
               CREATE SCHEMA IF NOT EXISTS pgbouncer;
               CREATE OR REPLACE FUNCTION pgbouncer.get_auth(username TEXT)
               RETURNS TABLE(username TEXT, password TEXT) AS

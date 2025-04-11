@@ -173,21 +173,35 @@ kubectl get svc -n <namespace>
 
 1. Доступ через стандартный порт PostgreSQL (5432):
    ```bash
-   kubectl port-forward svc/supabase-supavisor 5432:5432 -n <namespace>
+   kubectl port-forward svc/supabase-db 5432:5432 -n <namespace>
    ```
 
-2. Доступ через порт пула соединений в транзакционном режиме (6543):
+2. Доступ через NodePort (настраиваемый, по умолчанию 65432):
    ```bash
+   # Подключение напрямую к NodePort
+   psql -h <node-ip> -p 65432 -U supabase_admin -d postgres
+   ```
+   где `<node-ip>` - IP-адрес любой ноды вашего кластера Kubernetes.
+
+3. Подключение к базе данных с помощью клиента PostgreSQL через port-forward:
+   ```bash
+   # Сначала настройте port-forward
    kubectl port-forward svc/supabase-supavisor 6543:6543 -n <namespace>
-   ```
-
-3. Подключение к базе данных с помощью клиента PostgreSQL:
-   ```bash
-   # Через стандартный порт
-   psql -h localhost -p 5432 -U supabase_admin -d postgres
    
-   # Через порт пула соединений
+   # Затем подключитесь
    psql -h localhost -p 6543 -U supabase_admin -d postgres
    ```
 
 Supavisor обеспечивает эффективное управление соединениями к базе данных, что особенно полезно при большом количестве одновременных подключений.
+
+### Настройка NodePort для пула соединений PostgreSQL
+
+При установке Supabase вы можете указать NodePort для внешнего доступа к пулу соединений PostgreSQL:
+
+```bash
+./setup.sh --namespace <namespace> --domain <domain> --psql-pooler-port 65432
+```
+
+Это позволяет настроить NodePort, который будет использоваться для подключения к пулу соединений PostgreSQL извне кластера. По умолчанию используется порт 65432.
+
+> **Примечание**: NodePort должен быть в диапазоне 30000-32767 согласно ограничениям Kubernetes.

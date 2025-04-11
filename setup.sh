@@ -10,6 +10,7 @@ NC='\033[0m' # No Color
 # Default values
 DEFAULT_STORAGE_CLASS="local-path"
 DEFAULT_DB_USER="supabase_admin"
+DEFAULT_PSQL_POOLER_PORT="65432"  # NodePort для доступа к PostgreSQL извне (должен быть в диапазоне 30000-32767)
 
 echo "Starting Supabase setup..."
 
@@ -161,6 +162,10 @@ while [[ $# -gt 0 ]]; do
       EXTRA_REST_SCHEMAS="$2"
       shift 2
       ;;
+    --psql-pooler-port)
+      PSQL_POOLER_PORT="$2"
+      shift 2
+      ;;
     --help)
       echo "Usage: $0 [options]"
       echo "Options:"
@@ -193,6 +198,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --voyage-api-key KEY              Voyage API key"
       echo "  --openai-api-key KEY              OpenAI API key"
       echo "  --extra-rest-schemas SCHEMAS      Extra schemas for REST API (comma-separated)"
+      echo "  --psql-pooler-port PORT           NodePort для внешнего доступа к PostgreSQL (default: $DEFAULT_PSQL_POOLER_PORT)"
       echo "  --help                            Show this help message"
       exit 0
       ;;
@@ -225,10 +231,12 @@ fi
 # Set remaining values
 STORAGE_CLASS=$DEFAULT_STORAGE_CLASS
 DB_USER=${DB_USER:-$DEFAULT_DB_USER}
+PSQL_POOLER_PORT=${PSQL_POOLER_PORT:-$DEFAULT_PSQL_POOLER_PORT}
 
 echo "Using namespace: $NAMESPACE"
 echo "Using domain: $DOMAIN"
 echo "Using database user: $DB_USER"
+echo "Using PostgreSQL pooler NodePort: $PSQL_POOLER_PORT"
 
 
 # Check if namespace exists, if not create it
@@ -397,6 +405,10 @@ supavisor:
   tenantId: ${POOLER_TENANT_ID:-default}
   defaultPoolSize: ${POOLER_DEFAULT_POOL_SIZE:-20}
   maxClientConn: ${POOLER_MAX_CLIENT_CONN:-100}
+  port: 6543  # Внутренний порт Supavisor
+  service:
+    type: NodePort
+    nodePort: $PSQL_POOLER_PORT
 secret:
   jwt:
     anonKey: $ANON_KEY
@@ -458,6 +470,11 @@ echo "You can also access the Supabase Studio via port forwarding:"
 echo "kubectl port-forward svc/supabase-kong 8000:8000 -n $NAMESPACE"
 echo ""
 echo "Then visit: http://localhost:8000"
+echo ""
+echo "For PostgreSQL connection pooling via NodePort:"
+echo "Connect to: postgresql://$DB_USER:$POSTGRES_PASSWORD@<node-ip>:$PSQL_POOLER_PORT/postgres"
+echo ""
+echo "Where <node-ip> is the IP-адрес любой ноды вашего кластера Kubernetes"
 echo ""
 echo -e "${GREEN}=== Credentials and API Keys ===${NC}"
 echo -e "Dashboard credentials:"

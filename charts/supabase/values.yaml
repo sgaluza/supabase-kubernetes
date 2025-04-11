@@ -1158,6 +1158,9 @@ supavisor:
   replicaCount: 1
   nameOverride: ""
   fullnameOverride: ""
+  environment:
+    POSTGRES_DB: postgres
+    DATABASE_URL: "ecto://supabase_admin:${POSTGRES_PASSWORD}@supabase-db:5432/_supabase"
   serviceAccount:
     # Specifies whether a service account should be created
     create: true
