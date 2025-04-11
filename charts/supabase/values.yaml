@@ -145,7 +145,7 @@ db:
     enabled: true
     storageClassName: "local-path"
     annotations: {}
-    size: 8Gi
+    size: 200Gi
     accessModes:
       - ReadWriteOnce
     class: ""
@@ -648,12 +648,12 @@ storage:
     #   cpu: 100m
     #   memory: 128Mi
   persistence:
-    enabled: false
-    storageClassName: ""
+    enabled: true
+    storageClassName: "seaweedfs-storage"
     annotations: {}
-    size: 10Gi
+    size: 100Gi
     accessModes:
-      - ReadWriteOnce
+      - ReadWriteMany
     class: ""
   autoscaling:
     enabled: true
@@ -727,14 +727,7 @@ imgproxy:
     # requests:
     #   cpu: 100m
     #   memory: 128Mi
-  persistence:
-    enabled: true
-    storageClassName: ""
-    annotations: {}
-    size: 10Gi
-    accessModes:
-      - ReadWriteOnce
-    class: ""
+  # Imgproxy now shares the storage PVC, so no separate persistence configuration is needed
   autoscaling:
     enabled: true
     minReplicas: 1
