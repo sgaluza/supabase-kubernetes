@@ -94,6 +94,31 @@ kubectl port-forward svc/supabase-kong 8000:8000 -n <namespace>
 
 ## Устранение неполадок
 
+### Исправление ошибки "The extended attribute does not exist" в Storage
+
+Если вы столкнулись с ошибкой "The extended attribute does not exist" в логах Supabase Storage:
+
+```
+{"error":{"raw":"{\"code\":\"ENODATA\",\"errno\":61}","name":"Error","message":"The extended attribute does not exist."}}
+```
+
+Это происходит из-за проблемы с расширенными атрибутами файлов (extended attributes). Для исправления:
+
+1. Используйте обновленный скрипт `fix-all-files.sh` из этого репозитория:
+   ```bash
+   ./fix-all-files.sh <имя_пода_storage> <неймспейс>
+   ```
+
+2. Скрипт автоматически:
+   - Установит необходимые пакеты (postgresql-client и attr)
+   - Получит информацию о файлах из базы данных PostgreSQL
+   - Найдет файлы в правильной структуре директорий (/var/lib/storage/stub/stub/{bucket}/{path})
+   - Установит необходимые расширенные атрибуты для всех файлов
+
+Скрипт использует информацию из таблицы `storage.objects` для получения точных MIME-типов и параметров кэширования, что обеспечивает корректную работу хранилища.
+
+Подробная информация о проблеме, структуре хранилища и решении доступна в файле [README-storage-fix.md](README-storage-fix.md).
+
 Если у вас возникли проблемы с развертыванием, проверьте статус подов:
 
 ```bash
